@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RPG Evoluído</title>
+  <style>
+    body {
+      background-color: #1a1a2e;
+      color: #fff;
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    .battlefield {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .character {
+      font-size: 80px;
+    }
+    .status, .info {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    #battle-log {
+      background-color: #333;
+      padding: 10px;
+      height: 150px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>⚔️ RPG de Turnos Evoluído ⚔️</h1>
+
+  <div class="info">
+    Nível: <span id="player-lvl">1</span> |
+    XP: <span id="player-xp">0</span> |
+    Poções: <span id="player-potions">3</span>
+  </div>
+
+  <div class="battlefield">
+    <div>
+      <div class="character">🧙‍♂️</div>
+      <div class="status">Herói: <span id="player-hp">100</span> HP</div>
+    </div>
+    <div>
+      <div class="character" id="enemy-emoji">👹</div>
+      <div class="status"><span id="enemy-name">Goblin</span>: <span id="enemy-hp">80</span> HP</div>
+    </div>
+  </div>
+
+  <div id="battle-log">A batalha começou!</div>
+
+  <div id="actions">
+    <button onclick="attack()">Atacar</button>
+    <button onclick="heal()">Curar</button>
+    <button onclick="special()">Especial</button>
+    <button onclick="usePotion()">Usar Poção</button>
+  </div>
+
+  <audio id="bg-music" loop autoplay hidden>
+    <source src="https://cdn.pixabay.com/download/audio/2022/08/19/audio_c933cc2450.mp3?filename=fantasy-game-loop-110624.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="attack-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_09930c3901.mp3" preload="auto"></audio>
+  <audio id="win-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_e1329de1a6.mp3" preload="auto"></audio>
+
+  <script>
+    let playerHP = 100, playerMaxHP = 100;
+    let enemyHP = 80, enemyMaxHP = 80;
+    let specialCooldown = 0;
+    let playerXP = 0, playerLVL = 1, playerPotions = 3;
+
+    const enemies = [
+      { name: "Goblin", emoji: "👹", hp: 80 },
+      { name: "Esqueleto", emoji: "🦴", hp: 100 },
+      { name: "Dragãozinho", emoji: "🐉", hp: 120 },
+      { name: "Demônio", emoji: "😈", hp: 150 },
+      { name: "Lorde Sombrio", emoji: "👺", hp: 180 }
+    ];
+    let currentEnemy = 0;
+
+    function updateStatus() {
+      document.getElementById("player-hp").textContent = playerHP;
+      document.getElementById("enemy-hp").textContent = enemyHP;
+      document.getElementById("player-xp").textContent = playerXP;
+      document.getElementById("player-lvl").textContent = playerLVL;
+      document.getElementById("player-potions").textContent = playerPotions;
+    }
+
+    function log(text) {
+      const log = document.getElementById("battle-log");
+      log.innerHTML = text + "<br>" + log.innerHTML;
+    }
+
+    function disableButtons() {
+      document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+    }
+
+    function enableButtons() {
+      document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+    }
+
+    function playSound(id) {
+      const audio = document.getElementById(id);
+      audio.currentTime = 0;
+      audio.play();
+    }
+
+    function checkGameOver() {
+      if (playerHP <= 0) {
+        log("💀 Você foi derrotado!");
+        disableButtons();
+        return true;
+      }
+      if (enemyHP <= 0) {
+        playSound("win-sound");
+        log(`🏆 Você derrotou ${enemies[currentEnemy].name}!`);
+        playerXP += 20;
+        if (playerXP >= playerLVL * 30) {
+          playerLVL++;
+          playerXP = 0;
+          playerMaxHP += 20;
+          playerHP = playerMaxHP;
+          log("🆙 Você subiu de nível!");
+        }
+        playerPotions++;
+        currentEnemy = (currentEnemy + 1) % enemies.length;
+        nextEnemy();
+        return true;
+      }
+      return false;
+    }
+
+    function nextEnemy() {
+      const enemy = enemies[currentEnemy];
+      enemyHP = enemy.hp;
+      enemyMaxHP = enemy.hp;
+      document.getElementById("enemy-name").textContent = enemy.name;
+      document.getElementById("enemy-emoji").textContent = enemy.emoji;
+      enableButtons();
+      updateStatus();
+    }
+
+    function enemyTurn() {
+      if (checkGameOver()) return;
+      const damage = Math.floor(Math.random() * 10) + 5 + currentEnemy * 2;
+      playerHP -= damage;
+      log(`👾 ${enemies[currentEnemy].name} atacou e causou ${damage} de dano!`);
+      updateStatus();
+      checkGameOver();
+    }
+
+    function attack() {
+      playSound("attack-sound");
+      const damage = Math.floor(Math.random() * 15) + 5;
+      enemyHP -= damage;
+      log(`🗡️ Você causou ${damage} de dano!`);
+      updateStatus();
+      setTimeout(enemyTurn, 1000);
+      if (specialCooldown > 0) specialCooldown--;
+    }
+
+    function heal() {
+      const healAmount = Math.floor(Math.random() * 15) + 10;
+      playerHP = Math.min(playerHP + healAmount, playerMaxHP);
+      log(`💊 Você se curou em ${healAmount} HP!`);
+      updateStatus();
+      setTimeout(enemyTurn, 1000);
+      if (specialCooldown > 0) specialCooldown--;
+    }
+
+    function special() {
+      if (specialCooldown > 0) {
+        log("⏳ A habilidade especial está recarregando!");
+        return;
+      }
+      playSound("attack-sound");
+      const damage = Math.floor(Math.random() * 30) + 20;
+      enemyHP -= damage;
+      log(`🔥 Você usou ataque especial e causou ${damage} de dano!`);
+      specialCooldown = 3;
+      updateStatus();
+      setTimeout(enemyTurn, 1000);
+    }
+
+    function usePotion() {
+      if (playerPotions <= 0) {
+        log("❌ Você não tem mais poções!");
+        return;
+      }
+      playerPotions--;
+      playerHP = Math.min(playerHP + 40, playerMaxHP);
+      log("🧪 Você usou uma poção e recuperou 40 HP!");
+      updateStatus();
+      setTimeout(enemyTurn, 1000);
+    }
+
+    updateStatus();
+  </script>
+</body>
+</html>
